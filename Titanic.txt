@@ -1,28 +1,50 @@
-import numpy as np
+# Import necessary libraries
 import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
 
-trainData = pd.read_csv("train-1.csv")
-testData = pd.read_csv("test-1.csv")
+# Load datasets
+train = pd.read_csv('/kaggle/input/titanic/train.csv')
+test = pd.read_csv('/kaggle/input/titanic/test.csv')
 
-trainData.head(15)
+# Data Cleaning: Fill missing values
+train['Age'].fillna(train['Age'].median(), inplace=True)
+train['Embarked'].fillna(train['Embarked'].mode()[0], inplace=True)
+test['Age'].fillna(test['Age'].median(), inplace=True)
+test['Fare'].fillna(test['Fare'].median(), inplace=True)
 
+# Convert categorical variables to numerical
+train['Sex'] = train['Sex'].map({'male': 0, 'female': 1})
+test['Sex'] = test['Sex'].map({'male': 0, 'female': 1})
 
-from sklearn.ensemble import RandomForestClassifier
+train = pd.get_dummies(train, columns=['Embarked'], drop_first=True)
+test = pd.get_dummies(test, columns=['Embarked'], drop_first=True)
 
-y = trainData["Survived"]
+# Define features and target variable
+features = ['Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare', 'Embarked_Q', 'Embarked_S']
+X = train[features]
+y = train['Survived']
 
-features = ["Pclass", "Sex", "SibSp", "Parch"]
-X = pd.get_dummies(trainData[features])
-X_test = pd.get_dummies(testData[features])
+# Split data into training and validation sets
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
 
-model = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=1)
-model.fit(X, y)
-predictions = model.predict(X_test)
+# Train model
+model = LogisticRegression()
+model.fit(X_train, y_train)
 
-output = pd.DataFrame({'PassengerId': testData.PassengerId, 'Survived': predictions})
-output.to_csv('submission.csv', index=False)
-print("Your submission was successfully saved!")
-output.head(15)
+# Evaluate model
+predictions = model.predict(X_val)
+print(f"Validation Accuracy: {accuracy_score(y_val, predictions):.4f}")
+
+# Make predictions on test data
+test_predictions = model.predict(test[features])
+
+# Create submission file
+submission = pd.DataFrame({'PassengerId': test['PassengerId'], 'Survived': test_predictions})
+submission.to_csv('submission.csv', index=False)
+
 
 #Kaggle runs a machine learning competition on the Titanic data:
 # https://www.kaggle.com/competitions/titanicLinks to an external site.
